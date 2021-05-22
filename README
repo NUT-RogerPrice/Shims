@@ -1,0 +1,65 @@
+README 2021-05-22 Roger Price
+
+            NUT TLS Shims
+            -------------
+
+The software described here was developed in support of the
+Internet-Draft "Uninterruptible Power Supply (UPS) Management Protocol
+-- Commands and Responses"
+
+NUT is a mature project which advances slowly.  The SSL provisions for
+secure communication are now outdated and deprecated.  The shims
+proposed here provide thin daemons to be used in front of NUT's upsd
+and upsmon.  They support TLS 1.3 encryption of the NUT commands and
+responses.
+
+              TLS shim upsdTLS     TLS shim upsmonTLS
+             listens on port 401   listens on port 3493
+ ,-----,------------,----,               ,----,--------------,
+ | UPS - Attachment |TLS | <-STARTTLS    | TLS|  Management  |
+ |     |   Daemon   |shim|         OK--> |shim|    Daemon    |
+ |     |    upsd    |    |               |    |    upsmon    |
+ /-----'------------'----\               '----'--------------'
+         Listens on
+       port nut/3493
+
+        Attachment Daemon (upsd) Shim
+
+The shim in front of upsd listens to incoming traffic on port ups/401.
+When it receives the command STARTTLS it
+
+ 1. Returns OK to the client and sets up TLS encapsulation.
+
+ 2. Does not send STARTTLS to upsd port nut/3493.
+
+All other commands and responses are passed through.
+
+        Management Daemon (upsmon) Shim
+ 
+The shim in front of upsmon listens for incoming traffic on port
+nut/3493.  When it receives the command STARTTLS it
+
+ 1. Returns FEATURE-NOT-CONFIGURED to the client.
+
+ 2. Sends STARTTLS to upsd port ups/401.
+
+All other commands and responses are passed through.
+
+The three Python3 scripts are
+
+ upsdTLS.py : Daemon receives TLS encrypted commands on port ups/401
+ and passes them in plain text to upsd's port nut/3493
+
+ upsmonTLS.py : Daemon receives plain text commands from upsmon, upsc,
+ upsrw, upscmd, etc, on port nut/3493 and relays them encrypted to
+ port ups/401.
+
+ mkNUTcert.py : Utility script creates a private key/public key pair,
+ and issues the corresponding "server" and "client" PEM-encoded
+ certificates suitable for the shims.
+
+Full documentation is available in Part 2 of Configuration Examples
+version 2.0.
+
+The Makefile serves to run the Python linter on the source code using
+the command make.
